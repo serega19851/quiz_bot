@@ -39,14 +39,14 @@ def handle_new_question_request(event, vk, questions, conn_redis):
         keyboard=get_custom_keyboard(),
         random_id=random.randint(1, 1000)
     )
-    user_vk = creates_table_users(question, answer, user_id)[0]
-    conn_redis.json().set("bot_vk", Path.root_path(), user_vk)
+    user_vk = creates_table_users(question, answer, user_id)
+    conn_redis.json().set("user", Path.root_path(), user_vk)
 
 
 def handle_solution_attempt(event, conn_redis, vk):
     user_answer = event.text.lower()
     quiz_answer = conn_redis.json().get(
-            "user_vk"
+            "user"
             )['answer'].lower().split(':')[-1]
     similarity_value_number = difflib.SequenceMatcher(
         lambda x: x == " ",
@@ -72,7 +72,7 @@ def handle_solution_attempt(event, conn_redis, vk):
 
 
 def sends_message_surrendered(conn_redis, vk, event):
-    quiz_answer = conn_redis.json().get("bot_vk")['answer']
+    quiz_answer = conn_redis.json().get("user")['answer']
     vk.messages.send(
         user_id=event.user_id,
         message=quiz_answer,

@@ -46,8 +46,8 @@ def handle_new_question_request(
     )
     question, answer = questions[random_num_question]
     user_id = update.message.from_user.id
-    user_tg = creates_table_users(question, answer, user_id)[1]
-    conn_redis.json().set("user_tg", Path.root_path(), user_tg)
+    user_tg = creates_table_users(question, answer, user_id)
+    conn_redis.json().set("user", Path.root_path(), user_tg)
     update.message.reply_text(question)
     return HANDLE_SOLUTION_ATTEMPT
 
@@ -59,7 +59,7 @@ def handle_solution_attempt(
 ):
     user_answer = update.message.text.lower()
     quiz_answer = conn_redis.json().get(
-            "user_tg"
+            "user"
             )['answer'].lower().split(':')[-1]
     similarity_value_number = difflib.SequenceMatcher(
         lambda x: x == " ",
@@ -85,7 +85,7 @@ def handles_user_surrender(
         questions,
         conn_redis
 ):
-    quiz_answer = conn_redis.json().get("user_tg")['answer']
+    quiz_answer = conn_redis.json().get("user")['answer']
     update.message.reply_text(quiz_answer)
     random_num_question = random.choice(
         list(questions)
@@ -93,8 +93,8 @@ def handles_user_surrender(
     question, answer = questions[random_num_question]
     update.message.reply_text(question)
     user_id = update.message.from_user.id
-    user_tg = creates_table_users(question, answer, user_id)[1]
-    conn_redis.json().set("user_tg", Path.root_path(), user_tg)
+    user_tg = creates_table_users(question, answer, user_id)
+    conn_redis.json().set("user", Path.root_path(), user_tg)
     return HANDLE_SOLUTION_ATTEMPT
 
 
