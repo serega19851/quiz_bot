@@ -1,9 +1,4 @@
-import random
-import os
-
-
-def gets_random_questions_answers():
-    path_file = os.path.join('archive', random.choice(os.listdir('archive')))
+def gets_random_questions_answers(path_file):
     num_questions_answers = {}
     questions_answers = []
     with open(path_file, "r", encoding="KOI8-R") as my_file:

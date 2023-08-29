@@ -12,6 +12,8 @@ import logging
 from time import sleep
 from requests.exceptions import ReadTimeout, ConnectionError
 import redis
+import argparse
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +90,17 @@ def get_custom_keyboard():
     return keyboard.get_keyboard()
 
 
+def gets_args():
+    parser = argparse.ArgumentParser('accepts optional args')
+    parser.add_argument(
+        "-fp", "--file_path",
+        help="in enter your path to the file",
+        default=os.path.join('archive', random.choice(os.listdir('archive')))
+    )
+    args = parser.parse_args()
+    return args
+
+
 def main():
     """ Пример создания клавиатуры для отправки ботом """
     env = Env()
@@ -106,7 +119,7 @@ def main():
         charset="utf-8",
         decode_responses=True,
     )
-    questions = gets_random_questions_answers()
+    questions = gets_random_questions_answers(gets_args().file_path)
     longpoll = VkLongPoll(vk_session)
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

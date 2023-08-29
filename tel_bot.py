@@ -16,7 +16,8 @@ from functools import partial
 import logging
 import difflib
 import redis
-
+import argparse
+import os
 
 logger = logging.getLogger(__name__)
 NEWQUESTIONS, HANDLESOLUTIONATTEMPT = range(2)
@@ -111,6 +112,17 @@ def handle_error(update, error):
     logger.warning('Update "%s" caused error "%s"', update, error)
 
 
+def gets_args():
+    parser = argparse.ArgumentParser('accepts optional args')
+    parser.add_argument(
+        "-fp", "--file_path",
+        help="in enter your path to the file",
+        default=os.path.join('archive', random.choice(os.listdir('archive')))
+    )
+    args = parser.parse_args()
+    return args
+
+
 def main() -> None:
     env = Env()
     env.read_env()
@@ -133,7 +145,7 @@ def main() -> None:
         charset="utf-8",
         decode_responses=True,
     )
-    questions = gets_random_questions_answers()
+    questions = gets_random_questions_answers(gets_args().file_path)
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
 
