@@ -20,7 +20,7 @@ import argparse
 import os
 
 logger = logging.getLogger(__name__)
-NEWQUESTIONS, HANDLESOLUTIONATTEMPT = range(2)
+NEW_QUESTIONS, HANDLE_SOLUTION_ATTEMPT = range(2)
 
 
 def start(update: Update, context: CallbackContext):
@@ -31,7 +31,7 @@ def start(update: Update, context: CallbackContext):
     )
     update.message.reply_text(
         "Привет! Я бот для викторин!", reply_markup=reply_markup)
-    return NEWQUESTIONS
+    return NEW_QUESTIONS
 
 
 def handle_new_question_request(
@@ -48,10 +48,8 @@ def handle_new_question_request(
     user_id = update.message.from_user.id
     user_tg = creates_table_users(question, answer, user_id)[1]
     conn_redis.json().set("user_tg", Path.root_path(), user_tg)
-    update.message.reply_text(
-        f'{question}',
-    )
-    return HANDLESOLUTIONATTEMPT
+    update.message.reply_text(question)
+    return HANDLE_SOLUTION_ATTEMPT
 
 
 def handle_solution_attempt(
@@ -74,11 +72,11 @@ def handle_solution_attempt(
             'Правильно! Поздравляю! '
             'Для следующего вопроса нажми «Новый вопрос».'
         )
-        return NEWQUESTIONS
+        return NEW_QUESTIONS
 
     if similarity_value_number < words_similarity_score:
         update.message.reply_text('Неправильно… Попробуешь ещё раз?')
-        return HANDLESOLUTIONATTEMPT
+        return HANDLE_SOLUTION_ATTEMPT
 
 
 def handles_user_surrender(
@@ -97,7 +95,7 @@ def handles_user_surrender(
     user_id = update.message.from_user.id
     user_tg = creates_table_users(question, answer, user_id)[1]
     conn_redis.json().set("user_tg", Path.root_path(), user_tg)
-    return HANDLESOLUTIONATTEMPT
+    return HANDLE_SOLUTION_ATTEMPT
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -150,7 +148,7 @@ def main() -> None:
         entry_points=[CommandHandler('start', start)],
 
         states={
-            NEWQUESTIONS: [
+            NEW_QUESTIONS: [
                 MessageHandler(
                     Filters.regex(
                         '^Новый вопрос$'
@@ -163,7 +161,7 @@ def main() -> None:
                 ),
             ],
 
-            HANDLESOLUTIONATTEMPT: [
+            HANDLE_SOLUTION_ATTEMPT: [
                 MessageHandler(Filters.regex('^Сдаться$'),
                                partial(
                     handles_user_surrender,

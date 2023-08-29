@@ -10,7 +10,7 @@ import difflib
 from questions_answers import gets_random_questions_answers
 import logging
 from time import sleep
-from requests.exceptions import ReadTimeout, ConnectionError
+from requests.exceptions import ConnectionError
 import redis
 import argparse
 import os
@@ -141,8 +141,6 @@ def main():
                             event, vk, questions, conn_redis)
                     else:
                         handle_solution_attempt(event, conn_redis, vk)
-        except ReadTimeout as timeout:
-            logger.warning(f'Превышено время ожидания VK бота\n{timeout}\n')
         except ConnectionError as connect_er:
             logger.warning(f'Произошёл сетевой сбой VK бота\n{connect_er}\n')
             sleep(20)
