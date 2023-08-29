@@ -1,8 +1,8 @@
 def gets_random_questions_answers(path_file):
-    num_questions_answers = {}
+    questions_answers_ = {}
     questions_answers = []
-    with open(path_file, "r", encoding="KOI8-R") as my_file:
-        file_contents = my_file.read()
+    with open(path_file, "r", encoding="KOI8-R") as file:
+        file_contents = file.read()
 
     for text in file_contents.split('\n\n'):
         if 'Вопрос ' in text:
@@ -16,6 +16,5 @@ def gets_random_questions_answers(path_file):
         )
     ]
     for num in range(len(questions_answers)):
-        num_questions_answers[num+1] = questions_answers[num]
-
-    return num_questions_answers
+        questions_answers_[num+1] = questions_answers[num]
+    return questions_answers_
