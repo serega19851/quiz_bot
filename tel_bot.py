@@ -7,7 +7,7 @@ from telegram.ext import (
     ConversationHandler,
     CallbackContext,
 )
-from config_radis import creates_table_users, connects_radis
+from config_radis import creates_table_users
 from telegram import ReplyKeyboardRemove, Update, ReplyKeyboardMarkup
 from environs import Env
 from questions_answers import gets_random_questions_answers
@@ -15,6 +15,7 @@ import random
 from functools import partial
 import logging
 import difflib
+import redis
 
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,16 @@ def main() -> None:
     updater = Updater(tel_token)
     dispatcher = updater.dispatcher
 
-    conn_redis = connects_radis()
+    portredis = env.str("PORTREDIS")
+    passredis = env.str("PASSREDIS")
+    hostredis = env.str("HOSTREDIS")
+    conn_redis = redis.StrictRedis(
+        host=hostredis,
+        port=portredis,
+        password=passredis,
+        charset="utf-8",
+        decode_responses=True,
+    )
     questions = gets_random_questions_answers()
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],

@@ -5,13 +5,13 @@ from environs import Env
 from vk_api.longpoll import VkLongPoll, VkEventType
 import random
 from redis.commands.json.path import Path
-from config_radis import creates_table_users, connects_radis
+from config_radis import creates_table_users
 import difflib
 from questions_answers import gets_random_questions_answers
 import logging
 from time import sleep
 from requests.exceptions import ReadTimeout, ConnectionError
-
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,17 @@ def main():
     vk_token = env.str("VK_GROUP_TOKEN")
     vk_session = vk_api.VkApi(token=vk_token)
     vk = vk_session.get_api()
-    conn_redis = connects_radis()
+
+    portredis = env.str("PORTREDIS")
+    passredis = env.str("PASSREDIS")
+    hostredis = env.str("HOSTREDIS")
+    conn_redis = redis.StrictRedis(
+        host=hostredis,
+        port=portredis,
+        password=passredis,
+        charset="utf-8",
+        decode_responses=True,
+    )
     questions = gets_random_questions_answers()
     longpoll = VkLongPoll(vk_session)
     logging.basicConfig(
