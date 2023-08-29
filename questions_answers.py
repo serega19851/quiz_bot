@@ -15,6 +15,6 @@ def gets_random_questions_answers(path_file):
             questions_answers[0::2], questions_answers[1::2]
         )
     ]
-    for num in range(len(questions_answers)):
-        questions_answers_[num+1] = questions_answers[num]
+    for number, _ in enumerate(questions_answers):
+        questions_answers_[number+1] = questions_answers[number]
     return questions_answers_
