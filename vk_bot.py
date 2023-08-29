@@ -27,7 +27,7 @@ def offers_play_user(event, vk):
     )
 
 
-def handle_new_question_request(event, vk, questions, conn_red):
+def handle_new_question_request(event, vk, questions, conn_redis):
     random_num_question = random.choice(
         list(questions)
     )
@@ -40,12 +40,12 @@ def handle_new_question_request(event, vk, questions, conn_red):
         random_id=random.randint(1, 1000)
     )
     user_vk = creates_table_users(question, answer, user_id)[0]
-    conn_red.json().set("bot_vk", Path.root_path(), user_vk)
+    conn_redis.json().set("bot_vk", Path.root_path(), user_vk)
 
 
-def handle_solution_attempt(event, conn_red, vk):
+def handle_solution_attempt(event, conn_redis, vk):
     user_answer = event.text.lower()
-    quiz_answer = conn_red.json().get(
+    quiz_answer = conn_redis.json().get(
             "user_vk"
             )['answer'].lower().split(':')[-1]
     similarity_value_number = difflib.SequenceMatcher(
@@ -71,8 +71,8 @@ def handle_solution_attempt(event, conn_red, vk):
         )
 
 
-def sends_message_surrendered(conn_red, vk, event):
-    quiz_answer = conn_red.json().get("bot_vk")['answer']
+def sends_message_surrendered(conn_redis, vk, event):
+    quiz_answer = conn_redis.json().get("bot_vk")['answer']
     vk.messages.send(
         user_id=event.user_id,
         message=quiz_answer,

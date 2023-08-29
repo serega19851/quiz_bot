@@ -38,7 +38,7 @@ def handle_new_question_request(
         update: Update,
         context: CallbackContext,
         questions,
-        conn_red
+        conn_redis
 ) -> int:
 
     random_num_question = random.choice(
@@ -47,7 +47,7 @@ def handle_new_question_request(
     question, answer = questions[random_num_question]
     user_id = update.message.from_user.id
     user_tg = creates_table_users(question, answer, user_id)[1]
-    conn_red.json().set("user_tg", Path.root_path(), user_tg)
+    conn_redis.json().set("user_tg", Path.root_path(), user_tg)
     update.message.reply_text(
         f'{question}',
     )
@@ -57,10 +57,10 @@ def handle_new_question_request(
 def handle_solution_attempt(
         update: Update,
         context: CallbackContext,
-        conn_red
+        conn_redis
 ):
     user_answer = update.message.text.lower()
-    quiz_answer = conn_red.json().get(
+    quiz_answer = conn_redis.json().get(
             "user_tg"
             )['answer'].lower().split(':')[-1]
     similarity_value_number = difflib.SequenceMatcher(
@@ -85,9 +85,9 @@ def handles_user_surrender(
         update: Update,
         context: CallbackContext,
         questions,
-        conn_red
+        conn_redis
 ):
-    quiz_answer = conn_red.json().get("user_tg")['answer']
+    quiz_answer = conn_redis.json().get("user_tg")['answer']
     update.message.reply_text(quiz_answer)
     random_num_question = random.choice(
         list(questions)
@@ -96,7 +96,7 @@ def handles_user_surrender(
     update.message.reply_text(question)
     user_id = update.message.from_user.id
     user_tg = creates_table_users(question, answer, user_id)[1]
-    conn_red.json().set("user_tg", Path.root_path(), user_tg)
+    conn_redis.json().set("user_tg", Path.root_path(), user_tg)
     return HANDLESOLUTIONATTEMPT
 
 
@@ -158,7 +158,7 @@ def main() -> None:
                     partial(
                         handle_new_question_request,
                         questions=questions,
-                        conn_red=conn_redis
+                        conn_redis=conn_redis
                     )
                 ),
             ],
@@ -167,7 +167,7 @@ def main() -> None:
                 MessageHandler(Filters.regex('^Сдаться$'),
                                partial(
                     handles_user_surrender,
-                    conn_red=conn_redis,
+                    conn_redis=conn_redis,
                     questions=questions,
 
                 )
@@ -179,7 +179,7 @@ def main() -> None:
                     Filters.text,
                     partial(
                         handle_solution_attempt,
-                        conn_red=conn_redis,
+                        conn_redis=conn_redis,
 
                     )
                 ),
