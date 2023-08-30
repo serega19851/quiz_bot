@@ -1,23 +1,24 @@
-from redis.commands.json.path import Path
-from telegram.ext import (
-    Updater,
-    CommandHandler,
-    MessageHandler,
-    Filters,
-    ConversationHandler,
-    CallbackContext,
-)
-from config_radis import creates_table_users
-from telegram import ReplyKeyboardRemove, Update, ReplyKeyboardMarkup
-from environs import Env
-from questions_answers import gets_random_questions_answers
+import argparse
+import difflib
+import logging
+import os
 import random
 from functools import partial
-import logging
-import difflib
+
 import redis
-import argparse
-import os
+from environs import Env
+from redis.commands.json.path import Path
+from telegram import ReplyKeyboardMarkup
+from telegram import ReplyKeyboardRemove
+from telegram import Update
+from telegram.ext import CallbackContext
+from telegram.ext import CommandHandler
+from telegram.ext import ConversationHandler
+from telegram.ext import Filters
+from telegram.ext import MessageHandler
+from telegram.ext import Updater
+
+from questions_answers import gets_random_questions_answers
 
 logger = logging.getLogger(__name__)
 NEW_QUESTIONS, HANDLE_SOLUTION_ATTEMPT = range(2)
@@ -38,7 +39,7 @@ def handle_new_question_request(
         update: Update,
         context: CallbackContext,
         questions,
-        conn_redis
+        redis_conn
 ) -> int:
 
     random_num_question = random.choice(
@@ -46,8 +47,12 @@ def handle_new_question_request(
     )
     question, answer = questions[random_num_question]
     user_id = update.message.from_user.id
-    user_tg = creates_table_users(question, answer, user_id)
-    conn_redis.json().set("user", Path.root_path(), user_tg)
+    user = {
+        "user_id": user_id,
+        "question": question,
+        "answer": answer,
+    }
+    redis_conn.json().set(user_id, Path.root_path(), user)
     update.message.reply_text(question)
     return HANDLE_SOLUTION_ATTEMPT
 
@@ -55,12 +60,13 @@ def handle_new_question_request(
 def handle_solution_attempt(
         update: Update,
         context: CallbackContext,
-        conn_redis
+        redis_conn
 ):
+    user_id = update.message.from_user.id
     user_answer = update.message.text.lower()
-    quiz_answer = conn_redis.json().get(
-            "user"
-            )['answer'].lower().split(':')[-1]
+    quiz_answer = redis_conn.json().get(
+        user_id
+    )['answer'].lower().split(':')[-1]
     similarity_value_number = difflib.SequenceMatcher(
         lambda x: x == " ",
         user_answer,
@@ -83,18 +89,22 @@ def handles_user_surrender(
         update: Update,
         context: CallbackContext,
         questions,
-        conn_redis
+        redis_conn
 ):
-    quiz_answer = conn_redis.json().get("user")['answer']
+    user_id = update.message.from_user.id
+    quiz_answer = redis_conn.json().get(user_id)['answer']
     update.message.reply_text(quiz_answer)
     random_num_question = random.choice(
         list(questions)
     )
     question, answer = questions[random_num_question]
     update.message.reply_text(question)
-    user_id = update.message.from_user.id
-    user_tg = creates_table_users(question, answer, user_id)
-    conn_redis.json().set("user", Path.root_path(), user_tg)
+    user = {
+        "user_id": user_id,
+        "question": question,
+        "answer": answer,
+    }
+    redis_conn.json().set(user_id, Path.root_path(), user)
     return HANDLE_SOLUTION_ATTEMPT
 
 
@@ -133,13 +143,13 @@ def main() -> None:
     updater = Updater(tel_token)
     dispatcher = updater.dispatcher
 
-    portredis = env.str("PORTREDIS")
-    passredis = env.str("PASSREDIS")
-    hostredis = env.str("HOSTREDIS")
-    conn_redis = redis.StrictRedis(
-        host=hostredis,
-        port=portredis,
-        password=passredis,
+    redis_port = env.str("REDIS_PORT")
+    redis_pass = env.str("REDIS_PASS")
+    redis_host = env.str("REDIS_HOST")
+    redis_conn = redis.StrictRedis(
+        host=redis_host,
+        port=redis_port,
+        password=redis_pass,
         charset="utf-8",
         decode_responses=True,
     )
@@ -156,7 +166,7 @@ def main() -> None:
                     partial(
                         handle_new_question_request,
                         questions=questions,
-                        conn_redis=conn_redis
+                        redis_conn=redis_conn
                     )
                 ),
             ],
@@ -165,7 +175,7 @@ def main() -> None:
                 MessageHandler(Filters.regex('^Сдаться$'),
                                partial(
                     handles_user_surrender,
-                    conn_redis=conn_redis,
+                    redis_conn=redis_conn,
                     questions=questions,
 
                 )
@@ -177,7 +187,7 @@ def main() -> None:
                     Filters.text,
                     partial(
                         handle_solution_attempt,
-                        conn_redis=conn_redis,
+                        redis_conn=redis_conn,
 
                     )
                 ),

@@ -1,19 +1,22 @@
 # -*- coding: utf-8 -*-
-import vk_api
-from vk_api.keyboard import VkKeyboard, VkKeyboardColor
-from environs import Env
-from vk_api.longpoll import VkLongPoll, VkEventType
-import random
-from redis.commands.json.path import Path
-from config_radis import creates_table_users
-import difflib
-from questions_answers import gets_random_questions_answers
-import logging
-from time import sleep
-from requests.exceptions import ConnectionError
-import redis
 import argparse
+import difflib
+import logging
 import os
+import random
+from time import sleep
+
+import redis
+import vk_api
+from environs import Env
+from redis.commands.json.path import Path
+from requests.exceptions import ConnectionError
+from vk_api.keyboard import VkKeyboard
+from vk_api.keyboard import VkKeyboardColor
+from vk_api.longpoll import VkEventType
+from vk_api.longpoll import VkLongPoll
+
+from questions_answers import gets_random_questions_answers
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +30,7 @@ def offers_play_user(event, vk):
     )
 
 
-def handle_new_question_request(event, vk, questions, conn_redis):
+def handle_new_question_request(event, vk, questions, redis_conn):
     random_num_question = random.choice(
         list(questions)
     )
@@ -39,15 +42,20 @@ def handle_new_question_request(event, vk, questions, conn_redis):
         keyboard=get_custom_keyboard(),
         random_id=random.randint(1, 1000)
     )
-    user_vk = creates_table_users(question, answer, user_id)
-    conn_redis.json().set("user", Path.root_path(), user_vk)
+    user = {
+        "user_id": user_id,
+        "question": question,
+        "answer": answer,
+    }
+    redis_conn.json().set(user_id, Path.root_path(), user)
 
 
-def handle_solution_attempt(event, conn_redis, vk):
+def handle_solution_attempt(event, redis_conn, vk):
+    user_id = event.user_id
     user_answer = event.text.lower()
-    quiz_answer = conn_redis.json().get(
-            "user"
-            )['answer'].lower().split(':')[-1]
+    quiz_answer = redis_conn.json().get(
+        user_id
+    )['answer'].lower().split(':')[-1]
     similarity_value_number = difflib.SequenceMatcher(
         lambda x: x == " ",
         user_answer,
@@ -71,8 +79,9 @@ def handle_solution_attempt(event, conn_redis, vk):
         )
 
 
-def sends_message_surrendered(conn_redis, vk, event):
-    quiz_answer = conn_redis.json().get("user")['answer']
+def sends_message_surrendered(redis_conn, vk, event):
+    user_id = event.user_id
+    quiz_answer = redis_conn.json().get(user_id)['answer']
     vk.messages.send(
         user_id=event.user_id,
         message=quiz_answer,
@@ -109,13 +118,13 @@ def main():
     vk_session = vk_api.VkApi(token=vk_token)
     vk = vk_session.get_api()
 
-    portredis = env.str("PORTREDIS")
-    passredis = env.str("PASSREDIS")
-    hostredis = env.str("HOSTREDIS")
-    conn_redis = redis.StrictRedis(
-        host=hostredis,
-        port=portredis,
-        password=passredis,
+    redis_port = env.str("REDIS_PORT")
+    redis_pass = env.str("REDIS_PASS")
+    redis_host = env.str("REDIS_HOST")
+    redis_conn = redis.StrictRedis(
+        host=redis_host,
+        port=redis_port,
+        password=redis_pass,
         charset="utf-8",
         decode_responses=True,
     )
@@ -134,13 +143,13 @@ def main():
                         offers_play_user(event, vk)
                     elif event.text == 'Новый вопрос':
                         handle_new_question_request(
-                            event, vk, questions, conn_redis)
+                            event, vk, questions, redis_conn)
                     elif event.text == 'Сдаться':
-                        sends_message_surrendered(conn_redis, vk, event)
+                        sends_message_surrendered(redis_conn, vk, event)
                         handle_new_question_request(
-                            event, vk, questions, conn_redis)
+                            event, vk, questions, redis_conn)
                     else:
-                        handle_solution_attempt(event, conn_redis, vk)
+                        handle_solution_attempt(event, redis_conn, vk)
         except ConnectionError as connect_er:
             logger.warning(f'Произошёл сетевой сбой VK бота\n{connect_er}\n')
             sleep(20)
